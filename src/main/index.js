@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join } from 'path'
+import { join, basename } from 'path'
 import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -91,6 +91,16 @@ app.whenReady().then(() => {
     const filePath = join(dir, `${id}.json`)
     if (existsSync(filePath)) unlinkSync(filePath)
     return true
+  })
+
+  // Read a single spec sheet PDF from the configured spec sheet directory.
+  // basename() strips any path components from the requested name so a crafted
+  // filename can't escape the chosen directory.
+  ipcMain.handle('fs:readSpecSheet', (event, specDir, name) => {
+    if (!specDir) throw new Error('No spec sheet directory provided')
+    const filePath = join(specDir, basename(name))
+    if (!existsSync(filePath)) throw new Error(`Spec sheet not found: ${filePath}`)
+    return readFileSync(filePath)
   })
 
   createWindow()

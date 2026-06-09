@@ -132,7 +132,7 @@ function App() {
   const defaultSettings = {
     coverPagePDF: '', approvalWorksheet: '', warranty: '', startupForm: '',
     itRequirements: '', startupGuide: '', includePageNumbers: true, logoPath: '',
-    saveDirectory: ''
+    saveDirectory: '', specSheetDirectory: ''
   };
 
   const [projectData, setProjectData] = useState(defaultProjectData);
@@ -610,7 +610,7 @@ function ChecklistPage({ checklist, setChecklist, sectionData, setSectionData, s
 
   const getActionButton = (section) => {
     if (section.type === 'edit') return <button className="btn-small btn-edit" onClick={() => setShowModal(section.id)}>EDIT</button>;
-    if (section.type === 'import') return <button className="btn-small btn-import" onClick={() => setShowModal(section.id)}>IMPORT</button>;
+    if (section.type === 'import' && section.id !== 'specSheets') return <button className="btn-small btn-import" onClick={() => setShowModal(section.id)}>IMPORT</button>;
     return null;
   };
 
@@ -744,6 +744,26 @@ function SettingsPage({ settings, setSettings }) {
             </div>
           ))}
         </div>
+
+        {typeof window !== 'undefined' && window.electronFS && (
+          <div className="settings-section">
+            <h2>Default Spec Sheet Directory</h2>
+            <div className="settings-item">
+              <div className="settings-item__main">
+                <div className="settings-label">Spec Sheet Location</div>
+                <div className="settings-value">Folder the app pulls product spec sheets from</div>
+                {settings.specSheetDirectory
+                  ? <div className="file-path">{settings.specSheetDirectory}</div>
+                  : <div className="settings-value settings-value--warning">No folder selected</div>
+                }
+              </div>
+              <button className="btn-small btn-edit" onClick={async () => {
+                const chosen = await window.electronFS.pickFolder();
+                if (chosen) setSettings(prev => ({ ...prev, specSheetDirectory: chosen }));
+              }}>📁 Browse</button>
+            </div>
+          </div>
+        )}
         
         <div className="settings-section">
           <h2>PDF Output Options</h2>
@@ -855,7 +875,7 @@ function ModalManager({
     return <FileImportModal modalType={modalType} onClose={onClose} setShowModal={setShowModal} sectionData={sectionData} setSectionData={setSectionData} />;
   
   if (modalType === 'autoParseConfirm')
-    return <AutoParseConfirmModal onClose={onClose} sectionData={sectionData} setSectionData={setSectionData} setChecklist={setChecklist} />;
+    return <AutoParseConfirmModal onClose={onClose} sectionData={sectionData} setSectionData={setSectionData} setChecklist={setChecklist} settings={settings} />;
 
   if (modalType === 'generate') 
     return <GenerateModal onClose={onClose} checklist={checklist} setChecklist={setChecklist} projectData={projectData} sectionData={sectionData} settings={settings} />;
@@ -863,7 +883,7 @@ function ModalManager({
   return null;
 }
 
-function AutoParseConfirmModal({ onClose, sectionData, setSectionData, setChecklist }) {
+function AutoParseConfirmModal({ onClose, sectionData, setSectionData, setChecklist, settings }) {
   const [isParsing, setIsParsing] = useState(false);
 
   const handleYes = async () => {
@@ -878,14 +898,30 @@ function AutoParseConfirmModal({ onClose, sectionData, setSectionData, setCheckl
       }
 
       const files = [];
+      // If a default spec sheet directory has been configured in Settings, read the
+      // files from there through the Electron filesystem bridge; otherwise fall back
+      // to the app's bundled ./spec-sheets/ folder served alongside the renderer.
+      const configuredDir = (settings?.specSheetDirectory || '').trim();
+      const useConfiguredDir = !!configuredDir
+        && isElectron()
+        && typeof window.electronFS.readSpecSheet === 'function';
+
+      const loadSpecSheetFile = async (name) => {
+        if (useConfiguredDir) {
+          const bytes = await window.electronFS.readSpecSheet(configuredDir, name);
+          return new File([bytes], name, { type: 'application/pdf' });
+        }
+        const res = await fetch(`./spec-sheets/${name}`);
+        if (!res.ok) throw new Error(`Failed to fetch ${name}`);
+        const blob = await res.blob();
+        return new File([blob], name, { type: 'application/pdf' });
+      };
+
       for (const name of matchedFilenames) {
         try {
-          const res = await fetch(`./spec-sheets/${name}`);
-          if (!res.ok) throw new Error(`Failed to fetch ${name}`);
-          const blob = await res.blob();
-          files.push(new File([blob], name, { type: 'application/pdf' }));
+          files.push(await loadSpecSheetFile(name));
         } catch (err) {
-          console.error(`Failed to fetch auto spec sheet ${name}:`, err);
+          console.error(`Failed to load auto spec sheet ${name}:`, err);
         }
       }
 

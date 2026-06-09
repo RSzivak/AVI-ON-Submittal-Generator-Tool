@@ -11,6 +11,7 @@ const electronFS = {
   saveProject:   (dir, id, data)  => ipcRenderer.invoke('fs:saveProject', dir, id, data),
   loadProject:   (dir, id)        => ipcRenderer.invoke('fs:loadProject', dir, id),
   deleteProject: (dir, id)        => ipcRenderer.invoke('fs:deleteProject', dir, id),
+  readSpecSheet: (dir, name)      => ipcRenderer.invoke('fs:readSpecSheet', dir, name),
 }
 
 if (process.contextIsolated) {
