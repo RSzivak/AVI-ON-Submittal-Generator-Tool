@@ -757,10 +757,17 @@ function SettingsPage({ settings, setSettings }) {
                   : <div className="settings-value settings-value--warning">No folder selected</div>
                 }
               </div>
-              <button className="btn-small btn-edit" onClick={async () => {
-                const chosen = await window.electronFS.pickFolder();
-                if (chosen) setSettings(prev => ({ ...prev, specSheetDirectory: chosen }));
-              }}>📁 Browse</button>
+              <div className="settings-item__actions">
+                {settings.specSheetDirectory && (
+                  <button className="btn-small btn-secondary" onClick={() => setSettings(prev => ({ ...prev, specSheetDirectory: '' }))}>
+                    🗑️ Clear
+                  </button>
+                )}
+                <button className="btn-small btn-edit" onClick={async () => {
+                  const chosen = await window.electronFS.pickFolder();
+                  if (chosen) setSettings(prev => ({ ...prev, specSheetDirectory: chosen }));
+                }}>📁 Browse</button>
+              </div>
             </div>
           </div>
         )}
@@ -809,10 +816,17 @@ function SettingsPage({ settings, setSettings }) {
                   : <div className="settings-value settings-value--warning">No folder selected</div>
                 }
               </div>
-              <button className="btn-small btn-edit" onClick={async () => {
-                const chosen = await window.electronFS.pickFolder();
-                if (chosen) setSettings(prev => ({ ...prev, saveDirectory: chosen }));
-              }}>📁 Browse</button>
+              <div className="settings-item__actions">
+                {settings.saveDirectory && (
+                  <button className="btn-small btn-secondary" onClick={() => setSettings(prev => ({ ...prev, saveDirectory: '' }))}>
+                    🗑️ Clear
+                  </button>
+                )}
+                <button className="btn-small btn-edit" onClick={async () => {
+                  const chosen = await window.electronFS.pickFolder();
+                  if (chosen) setSettings(prev => ({ ...prev, saveDirectory: chosen }));
+                }}>📁 Browse</button>
+              </div>
             </div>
           </div>
         )}
